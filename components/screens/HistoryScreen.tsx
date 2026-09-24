@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatCompetency, formatDateTime, formatMoneyCents, formatRate, formatReading, statusLabel } from "@/lib/format";
+import { buildHistoryPdfHtml } from "@/lib/pdf";
 import { cancelPeriod, closePeriod, getCompetency, getReadings, getSnapshot, getWellReading, listCompetencies, reopenPeriod } from "@/lib/repositories/periods";
 import { listResidents } from "@/lib/repositories/residents";
 import type { Competency, CompetencySnapshot, Reading, Resident, WellReading } from "@/lib/types";
@@ -78,6 +79,33 @@ export function HistoryScreen() {
     await load();
   }
 
+  function handleExportPdf() {
+    if (!selectedCompetency || !snapshot) return;
+
+    const html = buildHistoryPdfHtml({
+      competency: selectedCompetency,
+      snapshot,
+      readings,
+      residents,
+      well,
+    });
+
+    const printWindow = window.open("", "_blank", "width=1200,height=900");
+    if (!printWindow) {
+      setStatus("O navegador bloqueou a abertura da janela de exportação.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  }
+
   return (
     <section>
       <h2 className="page-title">Histórico</h2>
@@ -115,6 +143,7 @@ export function HistoryScreen() {
           </div>
 
           <div className="row-actions">
+            <button type="button" className="btn primary" onClick={handleExportPdf}>Exportar PDF</button>
             {selectedCompetency.status === "open" ? (
               <button type="button" className="btn primary" onClick={() => void handleClose(selectedCompetency.id)}>Fechar competência</button>
             ) : null}
