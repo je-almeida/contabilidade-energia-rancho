@@ -11,7 +11,13 @@ import {
   formatReading,
 } from "@/lib/format";
 import { MONTHS } from "@/lib/types";
-import { parseNumber, validateMonthYear, validateReadings } from "@/lib/validation/forms";
+import {
+  canShowResidentCalculations,
+  canShowWellCalculations,
+  parseNumber,
+  validateMonthYear,
+  validateReadings,
+} from "@/lib/validation/forms";
 import { reaisToCents } from "@/lib/money";
 import {
   cancelPeriod,
@@ -229,6 +235,8 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
       residents: residents as NonNullable<(typeof residents)[number]>[],
     });
   }, [bill, wellCurrent, wellPrevious, rows]);
+
+  const showWellCalculations = canShowWellCalculations({ bill, wellCurrent });
 
   function updateRow(id: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.residentId === id ? { ...r, ...patch } : r)));
@@ -453,24 +461,33 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
             <FieldError message={errors.wellCurrent} />
           </label>
         </div>
-        <div className="form-2">
-          <div className="field">
-            <AutoLabel>Consumo</AutoLabel>
-            <div className="readonly">
-              {formatReading(calc?.wellConsumption)}
+        {showWellCalculations ? (
+          <div className="form-2">
+            <div className="field">
+              <AutoLabel>Consumo</AutoLabel>
+              <div className="readonly">
+                {formatReading(calc?.wellConsumption)}
+              </div>
+            </div>
+            <div className="field">
+              <AutoLabel>Custo do poço</AutoLabel>
+              <div className="readonly">
+                {formatMoneyCents(calc?.wellCostCents ?? null)}
+              </div>
             </div>
           </div>
-          <div className="field">
-            <AutoLabel>Custo do poço</AutoLabel>
-            <div className="readonly">
-              {formatMoneyCents(calc?.wellCostCents ?? null)}
-            </div>
-          </div>
-        </div>
+        ) : null}
       </div>
 
       {rows.map((row) => {
         const result = calc?.residents.find((r) => r.residentId === row.residentId);
+        const showResidentCalculations = canShowResidentCalculations({
+          bill,
+          wellCurrent,
+          energyCurrent: row.energyCurrent,
+          waterCurrent: row.waterCurrent,
+          adjustment: row.adjustment,
+        });
         return (
           <div className="resident-card" key={row.residentId}>
             <h3>
@@ -478,10 +495,6 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
               <span className="muted">{row.unit}</span>
             </h3>
             <div className="resident-grid">
-              <div className="field">
-                <AutoLabel>Energia anterior</AutoLabel>
-                <div className="readonly">{formatReading(row.energyPrevious)}</div>
-              </div>
               <label className="field">
                 Energia atual
                 <input
@@ -494,22 +507,6 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
                 />
                 <FieldError message={errors[`energy-${row.residentId}`]} />
               </label>
-              <div className="field">
-                <AutoLabel>Consumo energia</AutoLabel>
-                <div className="readonly">
-                  {formatReading(result?.energyConsumption)}
-                </div>
-              </div>
-              <div className="field">
-                <AutoLabel>Custo energia</AutoLabel>
-                <div className="readonly">
-                  {formatMoneyCents(result?.energyCostCents ?? null)}
-                </div>
-              </div>
-              <div className="field">
-                <AutoLabel>Água anterior</AutoLabel>
-                <div className="readonly">{formatReading(row.waterPrevious)}</div>
-              </div>
               <label className="field">
                 Água atual
                 <input
@@ -522,18 +519,6 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
                 />
                 <FieldError message={errors[`water-${row.residentId}`]} />
               </label>
-              <div className="field">
-                <AutoLabel>Consumo água</AutoLabel>
-                <div className="readonly">
-                  {formatReading(result?.waterConsumption)}
-                </div>
-              </div>
-              <div className="field">
-                <AutoLabel>Custo água</AutoLabel>
-                <div className="readonly">
-                  {formatMoneyCents(result?.waterCostCents ?? null)}
-                </div>
-              </div>
               <label className="field">
                 Ajuste (R$)
                 <input
@@ -547,49 +532,87 @@ export function LancamentoScreen({ competencyId }: { competencyId?: string }) {
                 <FieldError message={errors[`adj-${row.residentId}`]} />
               </label>
               <div className="field">
-                <AutoLabel>Total</AutoLabel>
-                <div className="readonly">
-                  {formatMoneyCents(result?.totalCents ?? null)}
-                </div>
+                <AutoLabel>Energia anterior</AutoLabel>
+                <div className="readonly">{formatReading(row.energyPrevious)}</div>
               </div>
+              <div className="field">
+                <AutoLabel>Água anterior</AutoLabel>
+                <div className="readonly">{formatReading(row.waterPrevious)}</div>
+              </div>
+              {showResidentCalculations ? (
+                <>
+                  <div className="field">
+                    <AutoLabel>Consumo energia</AutoLabel>
+                    <div className="readonly">
+                      {formatReading(result?.energyConsumption)}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <AutoLabel>Custo energia</AutoLabel>
+                    <div className="readonly">
+                      {formatMoneyCents(result?.energyCostCents ?? null)}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <AutoLabel>Consumo água</AutoLabel>
+                    <div className="readonly">
+                      {formatReading(result?.waterConsumption)}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <AutoLabel>Custo água</AutoLabel>
+                    <div className="readonly">
+                      {formatMoneyCents(result?.waterCostCents ?? null)}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <AutoLabel>Total</AutoLabel>
+                    <div className="readonly">
+                      {formatMoneyCents(result?.totalCents ?? null)}
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         );
       })}
 
-      <div className="card">
-        <h3>Resumo</h3>
-        <div className="grid-kpis">
-          <div className="kpi">
-            <AutoLabel>Consumo total energia</AutoLabel>
-            <strong>{formatReading(calc?.totalEnergyConsumption)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>R$/kWh</AutoLabel>
-            <strong>{formatRate(calc?.rateKwh ?? null, rateDecimals)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>Consumo poço</AutoLabel>
-            <strong>{formatReading(calc?.wellConsumption)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>Custo poço</AutoLabel>
-            <strong>{formatMoneyCents(calc?.wellCostCents ?? null)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>Consumo total água</AutoLabel>
-            <strong>{formatReading(calc?.totalWaterConsumption)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>R$/m³</AutoLabel>
-            <strong>{formatRate(calc?.rateM3 ?? null, rateDecimals)}</strong>
-          </div>
-          <div className="kpi">
-            <AutoLabel>Total geral</AutoLabel>
-            <strong>{formatMoneyCents(calc?.grandTotalCents ?? null)}</strong>
+      {calc ? (
+        <div className="card">
+          <h3>Resumo</h3>
+          <div className="grid-kpis">
+            <div className="kpi">
+              <AutoLabel>Consumo total energia</AutoLabel>
+              <strong>{formatReading(calc.totalEnergyConsumption)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>R$/kWh</AutoLabel>
+              <strong>{formatRate(calc.rateKwh ?? null, rateDecimals)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>Consumo poço</AutoLabel>
+              <strong>{formatReading(calc.wellConsumption)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>Custo poço</AutoLabel>
+              <strong>{formatMoneyCents(calc.wellCostCents ?? null)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>Consumo total água</AutoLabel>
+              <strong>{formatReading(calc.totalWaterConsumption)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>R$/m³</AutoLabel>
+              <strong>{formatRate(calc.rateM3 ?? null, rateDecimals)}</strong>
+            </div>
+            <div className="kpi">
+              <AutoLabel>Total geral</AutoLabel>
+              <strong>{formatMoneyCents(calc.grandTotalCents ?? null)}</strong>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="row-actions">
         {status !== "cancelled" && status !== "closed" ? (

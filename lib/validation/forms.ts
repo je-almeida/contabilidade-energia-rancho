@@ -6,6 +6,30 @@ export function parseNumber(raw: string): number | null {
   return n;
 }
 
+export function canShowWellCalculations(input: { bill: string; wellCurrent: string }): boolean {
+  return parseNumber(input.bill) !== null && parseNumber(input.wellCurrent) !== null;
+}
+
+export function canShowResidentCalculations(input: {
+  bill: string;
+  wellCurrent: string;
+  energyCurrent: string;
+  waterCurrent: string;
+  adjustment: string;
+  energyPrevious?: number;
+  waterPrevious?: number;
+}): boolean {
+  const baseReady =
+    parseNumber(input.bill) !== null &&
+    parseNumber(input.wellCurrent) !== null;
+  const residentReady =
+    parseNumber(input.energyCurrent) !== null &&
+    parseNumber(input.waterCurrent) !== null &&
+    (input.adjustment.trim() === "" || parseNumber(input.adjustment) !== null);
+
+  return baseReady && residentReady;
+}
+
 export function requiredText(value: string, label: string): string | null {
   if (!value.trim()) return `${label} é obrigatório.`;
   return null;

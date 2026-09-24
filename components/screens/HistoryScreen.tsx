@@ -43,7 +43,16 @@ export function HistoryScreen() {
   }, [loadCompetency]);
 
   useEffect(() => {
-    void load();
+    let active = true;
+
+    void (async () => {
+      await load();
+      if (!active) return;
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   async function handleSelect(id: string) {
@@ -140,7 +149,7 @@ export function HistoryScreen() {
                   <div key={reading.id} className="list-item">
                     <strong>{resident?.name ?? "Morador"}</strong>
                     <div className="muted">
-                      Energia: {formatReading(reading.energyConsumption)} · Água: {formatReading(reading.waterConsumption)} · Total: {formatMoneyCents(reading.totalCents ?? null)}
+                      Energia: {formatMoneyCents(reading.energyCostCents ?? null)} ({formatReading(reading.energyConsumption)} kWh) · Água: {formatMoneyCents(reading.waterCostCents ?? null)} ({formatReading(reading.waterConsumption)} m³) · Total: {formatMoneyCents(reading.totalCents ?? null)}
                     </div>
                   </div>
                 );
